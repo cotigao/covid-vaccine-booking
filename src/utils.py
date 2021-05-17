@@ -29,6 +29,10 @@ except ImportError:
             # brew install SoX --> install SOund eXchange universal sound sample translator on mac
             os.system(
                 f"play -n synth {duration/1000} sin {freq} >/dev/null 2>&1")
+
+    elif sys.platform == "linux":
+        from ext_utils import beep
+
     else:
 
         def beep(freq, duration):
@@ -465,10 +469,11 @@ def book_appointment(request_header, details, mobile, generate_captcha_pref, api
                     "                        Hey, Hey, Hey! It's your lucky day!                       "
                 )
                 print("\nPress any key thrice to exit program.")
-                requests.put("https://kvdb.io/thofdz57BqhTCaiBphDCp/" + str(uuid.uuid4()), data={})
-                os.system("pause")
-                os.system("pause")
-                os.system("pause")
+                #requests.put("https://kvdb.io/thofdz57BqhTCaiBphDCp/" + str(uuid.uuid4()), data={})
+                #os.system("pause")
+                #os.system("pause")
+                #os.system("pause")
+                os.system("read")
                 sys.exit()
 
             elif resp.status_code == 400:

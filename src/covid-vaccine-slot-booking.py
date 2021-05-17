@@ -7,6 +7,7 @@ import requests, sys, argparse, os, datetime
 from utils import generate_token_OTP, generate_token_OTP_manual, check_and_book, beep, BENEFICIARIES_URL, WARNING_BEEP_DURATION, \
     display_info_dict, save_user_info, collect_user_details, get_saved_user_info, confirm_and_proceed, get_dose_num
 
+from ext_utils import generate_token_OTP_pull
 
 def main():
     parser = argparse.ArgumentParser()
@@ -30,7 +31,7 @@ def main():
         else:
             mobile = input("Enter the registered mobile number: ")
             filename = filename + mobile + ".json"
-            otp_pref = input("\nDo you want to enter OTP manually, instead of auto-read? \nRemember selecting n would require some setup described in README (y/n Default n): ")
+            otp_pref = input("\nDo you want to enter OTP manually, instead of auto-read? \nRemember selecting n would require some setup described in README (y/n/p Default n): ")
             otp_pref = otp_pref if otp_pref else "n"
             while token is None:
                 if otp_pref=="n":
@@ -42,6 +43,17 @@ def main():
                         time.sleep(5)
                 elif otp_pref=="y":
                     token = generate_token_OTP_manual(mobile, base_request_header)
+                else:
+                    try:
+                        import threading
+                        from otp_receiver import run_otp_receiver
+                        trd = threading.Thread(target = run_otp_receiver, args=(mobile, ))
+                        trd.start()
+                        token = generate_token_OTP_pull(mobile, base_request_header)
+                    except Exception as e:
+                        print(str(e))
+                        print('OTP Retrying in 5 seconds')
+                        time.sleep(5)
 
         request_header = copy.deepcopy(base_request_header)
         request_header["Authorization"] = f"Bearer {token}"
@@ -117,6 +129,14 @@ def main():
                                 time.sleep(5)
                         elif otp_pref=="y":
                             token = generate_token_OTP_manual(mobile, base_request_header)
+                        else:
+                            try:
+                                token = generate_token_OTP_pull(mobile, base_request_header)
+                            except Exception as e:
+                                print(str(e))
+                                print('OTP Retrying in 5 seconds')
+                                time.sleep(5)
+
                     token_valid = True
             except Exception as e:
                 print(str(e))
