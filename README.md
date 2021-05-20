@@ -16,6 +16,8 @@
       - [Screenshots](#ifttt-steps-in-screenshots)
     - [Option 2: CoWIN OTP Retriever app](#option-2-cowin-otp-retriever) 
       - [Screenshots](#cowin-otp-retriever-steps-in-screenshots)
+    - [Option 3: CoWIN OTP Receiver](#option-3-cowin-otp-receiver)
+  - [Setup Guide: iOS](#setup-guide-for-ios)
   - [Setup Guide: iOS](#setup-guide-for-ios)
     - [Using Shortcuts app](#using-shortcuts-app)
       - [Screenshots](#shortcuts-steps-in-screenshots)   
@@ -113,6 +115,10 @@
 8. Ensure that the battery saver mode, and all other optimizations are removed. The app should always run (This is the key for quick response). 
 	Tip: If you don not see a success message on the app when you receive an OTP: https://www.androidpolice.com/2020/05/30/how-to-prevent-apps-sleeping-in-the-background-on-android/
 8. Security tip: Make sure to change back your settings to disallow app installation from unknown sources.
+
+### Option 3: CoWIN OTP Receiver
+1. Create a file named XXXXXXXXXX_cowin_covid_otp in tmp directory containing the OTP. XXXXXXXXXX is your mobile number. In Linux, the tmp directory will be /tmp
+
 
 #### CoWIN OTP Retriever steps in screenshots
 1. ![image](https://user-images.githubusercontent.com/3753228/117923351-814c2880-b311-11eb-9008-fbf497271e08.png)
