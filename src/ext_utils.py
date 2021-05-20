@@ -3,6 +3,7 @@ import tempfile
 import threading
 import requests
 import time
+from hashlib import sha256
 
 def beep(a, b):
     for x in range(1, 3):
