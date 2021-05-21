@@ -7,4 +7,5 @@ pyinstaller
 pysimplegui
 tk
 anticaptchaofficial
+twocaptchaapi
 tempfile
