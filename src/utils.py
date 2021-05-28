@@ -93,7 +93,7 @@ def display_table(dict_list):
 def display_info_dict(details):
     for key, value in details.items():
         if isinstance(value, list):
-            if all(isinstance(item, dict) for item in value):
+            if len(value) > 0 and all(isinstance(item, dict) for item in value):
                 print(f"\t{key}:")
                 display_table(value)
             else:
@@ -135,6 +135,9 @@ def get_saved_user_info(filename):
     with open(filename, "r") as f:
         data = json.load(f)
 
+    # for backward compatible logic
+    if data["search_option"] !=3 and "pin_code_location_dtls" not in data:
+        data["pin_code_location_dtls"] = []
     return data
 
 
@@ -146,7 +149,23 @@ def get_dose_num(collected_details):
         return 2
 
     return 1
-
+    
+def start_date_search():
+        # Get search start date
+        start_date = input(
+                "\nSearch for next seven day starting from when?\nUse 1 for today, 2 for tomorrow, or provide a date in the format dd-mm-yyyy. Default 2: "
+            )
+        if not start_date:
+            start_date = 2
+        elif start_date in ["1", "2"]:
+            start_date = int(start_date)
+        else:
+            try:
+                datetime.datetime.strptime(start_date, "%d-%m-%Y")
+            except ValueError:
+                start_date = 2
+                print('Invalid Date! Proceeding with tomorrow.')
+        return start_date
 
 def collect_user_details(request_header):
     # Get Beneficiaries
@@ -185,20 +204,23 @@ def collect_user_details(request_header):
     )
     # get search method to use
     search_option = input(
-        """Search by Pincode? Or by State/District? \nEnter 1 for Pincode or 2 for State/District. (Default 2) : """
+        """Search by Pincode? Or by State/District Or Smart search State/District for selected Pincodes ? \nEnter 1 for Pincode or 2 for State/District or 3 for State/District filter by Pincodes (Optimized for rate-limit) (Default 2): """
     )
 
-    if not search_option or int(search_option) not in [1, 2]:
+    if not search_option or int(search_option) not in [1, 2, 3]:
         search_option = 2
     else:
         search_option = int(search_option)
 
-    if search_option == 2:
-        # Collect vaccination center preferance
+    pin_code_location_dtls = []
+    if search_option == 3:
         location_dtls = get_districts(request_header)
-
+        pin_code_location_dtls = get_pincodes()
+    elif search_option == 2:
+        # Collect vaccination center preference
+        location_dtls = get_districts(request_header)
     else:
-        # Collect vaccination center preferance
+        # Collect vaccination center preference
         location_dtls = get_pincodes()
 
     print(
@@ -251,23 +273,13 @@ def collect_user_details(request_header):
             else:
                 os.system("pause")
                 sys.exit(1)
+        else:
+            start_date=start_date_search()
 
     else:
-        # Get search start date
-        start_date = input(
-                "\nSearch for next seven day starting from when?\nUse 1 for today, 2 for tomorrow, or provide a date in the format dd-mm-yyyy. Default 2: "
-            )
-        if not start_date:
-            start_date = 2
-        elif start_date in ["1", "2"]:
-            start_date = int(start_date)
-        else:
-            try:
-                datetime.datetime.strptime(start_date, "%d-%m-%Y")
-            except ValueError:
-                start_date = 2
-                print('Invalid Date! Proceeding with tomorrow.')
-    # Get preference of Free/Paid option
+        # Non vaccinated
+        start_date=start_date_search()
+        
     fee_type = get_fee_type_preference()
 
     print(
@@ -286,6 +298,7 @@ def collect_user_details(request_header):
     collected_details = {
         "beneficiary_dtls": beneficiary_dtls,
         "location_dtls": location_dtls,
+        "pin_code_location_dtls": pin_code_location_dtls,
         "search_option": search_option,
         "minimum_slots": minimum_slots,
         "refresh_freq": refresh_freq,
@@ -324,7 +337,8 @@ def check_calendar_by_district(
         minimum_slots,
         min_age_booking,
         fee_type,
-        dose_num
+        dose_num,
+        beep_required=True
 ):
     """
     This function
@@ -370,10 +384,12 @@ def check_calendar_by_district(
             else:
                 pass
 
-        for location in location_dtls:
-            if location["district_name"] in [option["district"] for option in options]:
-                for _ in range(2):
-                    beep(location["alert_freq"], 150)
+        # beep only when needed
+        if beep_required:
+            for location in location_dtls:
+                if location["district_name"] in [option["district"] for option in options]:
+                    for _ in range(2):
+                        beep(location["alert_freq"], 150)
         return options
 
     except Exception as e:
@@ -534,7 +550,7 @@ def book_appointment(request_header, details, mobile, generate_captcha_pref):
 
 
 def check_and_book(
-        request_header, beneficiary_dtls, location_dtls, search_option, **kwargs
+        request_header, beneficiary_dtls, location_dtls, pin_code_location_dtls, search_option, **kwargs
 ):
     """
     This function
@@ -567,7 +583,7 @@ def check_and_book(
         else:
             pass
 
-        if search_option == 2:
+        if search_option == 3:
             options = check_calendar_by_district(
                 request_header,
                 vaccine_type,
@@ -576,7 +592,32 @@ def check_and_book(
                 minimum_slots,
                 min_age_booking,
                 fee_type,
-                dose_num
+                dose_num,
+                beep_required=False
+            )
+
+            if not isinstance(options, bool):
+                pincode_filtered_options = []
+                for option in options: 
+                    for location in pin_code_location_dtls:
+                        if int(location["pincode"]) == int(option["pincode"]):
+                            # ADD this filtered PIN code option
+                            pincode_filtered_options.append(option)
+                            for _ in range(2):
+                                beep(location["alert_freq"], 150)
+                options = pincode_filtered_options
+
+        elif search_option == 2:
+            options = check_calendar_by_district(
+                request_header,
+                vaccine_type,
+                location_dtls,
+                start_date,
+                minimum_slots,
+                min_age_booking,
+                fee_type,
+                dose_num,
+                beep_required=True
             )
         else:
             options = check_calendar_by_pincode(
@@ -750,6 +791,9 @@ def get_pincodes():
     locations = []
     pincodes = input("Enter comma separated index numbers of pincodes to monitor: ")
     for idx, pincode in enumerate(pincodes.split(",")):
+        if not pincode or len(pincode) < 6:
+            print(f"Ignoring invalid pincode: {pincode}")
+            continue
         pincode = {"pincode": pincode, "alert_freq": 440 + ((2 * idx) * 110)}
         locations.append(pincode)
     return locations
@@ -875,6 +919,8 @@ def get_beneficiaries(request_header):
                                
                 dose1_date=datetime.datetime.strptime(beneficiary["dose1_date"], "%d-%m-%Y")
                 beneficiary["dose2_due_date"]=dose1_date+datetime.timedelta(days=days_remaining)
+            else:
+                vaccinated=False
                 #print(beneficiary_2)
 
             tmp = {
@@ -890,7 +936,7 @@ def get_beneficiaries(request_header):
             refined_beneficiaries.append(tmp)
 
         display_table(refined_beneficiaries)
-        print(refined_beneficiaries)
+        #print(refined_beneficiaries)
         print(
             """
         ################# IMPORTANT NOTES #################
@@ -924,7 +970,7 @@ def get_beneficiaries(request_header):
         ]
 
         for beneficiary in reqd_beneficiaries:
-                if vaccinated:
+                if beneficiary["status"]=="Partially Vaccinated":
                     days_remaining=vaccine_dose2_duedate(beneficiary["vaccine"])
                         
                     dose1_date=datetime.datetime.strptime(beneficiary["dose1_date"], "%d-%m-%Y")

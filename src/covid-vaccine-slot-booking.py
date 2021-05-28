@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
+import traceback
 import time
 from types import SimpleNamespace
 import requests, sys, argparse, os, datetime
@@ -33,6 +34,9 @@ def main():
     try:
         base_request_header = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
+            'origin': 'https://selfregistration.cowin.gov.in/',
+            'referer': 'https://selfregistration.cowin.gov.in/'
+        
         }
 
         token = None
@@ -80,8 +84,9 @@ def main():
                 print("\n================================= Info =================================\n")
                 display_info_dict(collected_details)
 
-                file_acceptable = input("\nProceed with above info? (y/n Default n): ")
-                file_acceptable = file_acceptable if file_acceptable else 'n'
+                file_acceptable = input("\nProceed with above info? (y/n Default y): ")
+                file_acceptable = file_acceptable if file_acceptable else 'y'
+
                 if file_acceptable != 'y':
                     collected_details = collect_user_details(request_header)
                     save_user_info(filename, collected_details)
@@ -160,16 +165,22 @@ def main():
 
                     token_valid = True
 
-                check_and_book(request_header, info.beneficiary_dtls, info.location_dtls, info.search_option,
-                                             min_slots=info.minimum_slots,
-                                             ref_freq=info.refresh_freq,
-                                             auto_book=info.auto_book,
-                                             start_date=info.start_date,
-                                             vaccine_type=info.vaccine_type,
-                                             fee_type=info.fee_type,
-                                             mobile=mobile,
-                                             captcha_automation=info.captcha_automation,
-                                             dose_num=get_dose_num(collected_details))
+                check_and_book(
+                    request_header, 
+                    info.beneficiary_dtls,
+                    info.location_dtls,
+                    info.pin_code_location_dtls,
+                    info.search_option,
+                    min_slots=info.minimum_slots,
+                    ref_freq=info.refresh_freq,
+                    auto_book=info.auto_book,
+                    start_date=info.start_date,
+                    vaccine_type=info.vaccine_type,
+                    fee_type=info.fee_type,
+                    mobile=mobile,
+                    captcha_automation=info.captcha_automation,
+                    dose_num=get_dose_num(collected_details)
+                            )
             except Exception as e:
                 print(str(e))
                 print('Retryin in 5 seconds')
